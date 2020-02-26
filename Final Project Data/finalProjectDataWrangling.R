@@ -45,6 +45,12 @@ aq_2019_collection_sites <- read_delim("aq_2019.txt", delim=",")
 aq_2019_collection_sites <- aq_2019_collection_sites %>%
   filter(!is.na(name))
 
+aq_pm25_data_2014 <- read_csv("PM25_PICKDATA_2014-12-31.csv")
+aq_pm25_data_2015 <- read_csv("PM25_PICKDATA_2015-12-31.csv")
+aq_pm25_data_2016 <- read_csv("PM25_PICKDATA_2016-12-31.csv")
+aq_pm25_data_2017 <- read_csv("PM25_PICKDATA_2017-12-31.csv")
+aq_pm25_data_2018 <- read_csv("PM25_PICKDATA_2018-12-31.csv")
+
 # TODO: Before doing this, relable column names by year!
 caaspp_score_data_15_16 <- left_join(caaspp_score_data_15, caaspp_score_data_16, by = c("School Code", "Grade"))
 caaspp_score_data_15_16_17 <- left_join(caaspp_score_data_15_16, caaspp_score_data_17, by = c("School Code", "Grade"))
