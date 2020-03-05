@@ -10,9 +10,9 @@ library(RCA)
 
 
 # Set your working directory
-setwd("/Users/fionahall-zazueta/Documents/GitHub/educ143-final-project/Final Project Data")
+  setwd("/Users/michaelaelias/Documents/GitHub/educ143-final-project/Final Project Data/educ143-final-project/Final Project Data/")
 
-pub_school_data <- read_tsv("pubschls.txt")
+pub_school_data <- read_tsv("pubschls.txt") 
 caaspp_score_data_19 <- read_delim("sb_ca2019_1_csv_v3.txt", delim=",")
 caaspp_score_data_18 <- read_delim("sb_ca2018_1_csv_v3.txt", delim=",")
 caaspp_score_data_17 <- read_delim("sb_ca2017_1_csv_v2.txt", delim=",")
@@ -50,6 +50,15 @@ aq_pm25_data_2015 <- read_csv("PM25_PICKDATA_2015-12-31.csv")
 aq_pm25_data_2016 <- read_csv("PM25_PICKDATA_2016-12-31.csv")
 aq_pm25_data_2017 <- read_csv("PM25_PICKDATA_2017-12-31.csv")
 aq_pm25_data_2018 <- read_csv("PM25_PICKDATA_2018-12-31.csv")
+
+seda_data <- read_csv("SEDA_cov_school_pool_v30.csv")
+seda_data_CA <- seda_data %>% filter(stateabb=="CA")
+combine <- left_join(pub_school_data, seda_data_CA, by=c("School" = "schnam"))
+
+
+seda_data_CA$ncessch <- substr(seda_data_CA$ncessch, 8, 12)
+combine <- left_join(pub_school_data, seda_data_CA, by=c("NCESSchool" = "ncessch"))
+combine_filter <- combine %>% filter(NCESSchool != "No Data" )
 
 # TODO: Before doing this, relable column names by year!
 # caaspp_score_data_15_16 <- left_join(caaspp_score_data_15, caaspp_score_data_16, by = c("School Code", "Grade"))
