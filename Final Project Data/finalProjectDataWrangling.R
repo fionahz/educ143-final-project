@@ -11,7 +11,7 @@ library(rvest)
 
 
 # Set your working directory
-setwd("/Users/fionahall-zazueta/Documents/GitHub/educ143-final-project/Final Project Data")
+  setwd("/Users/michaelaelias/Documents/GitHub/educ143-final-project/Final Project Data/educ143-final-project/Final Project Data/")
 
 pub_school_data <- read_tsv("pubschls.txt")
 pub_school_data <- pub_school_data %>%
@@ -214,6 +214,15 @@ aq_pm25_2019_year <- aq_pm25_2019_year %>%
 # aq_pm25_data_2016 <- read_csv("PM25_PICKDATA_2016-12-31.csv")
 # aq_pm25_data_2017 <- read_csv("PM25_PICKDATA_2017-12-31.csv")
 # aq_pm25_data_2018 <- read_csv("PM25_PICKDATA_2018-12-31.csv")
+
+seda_data <- read_csv("SEDA_cov_school_pool_v30.csv")
+seda_data_CA <- seda_data %>% filter(stateabb=="CA")
+combine <- left_join(pub_school_data, seda_data_CA, by=c("School" = "schnam"))
+
+
+seda_data_CA$ncessch <- substr(seda_data_CA$ncessch, 8, 12)
+combine <- left_join(pub_school_data, seda_data_CA, by=c("NCESSchool" = "ncessch"))
+combine_filter <- combine %>% filter(NCESSchool != "No Data" )
 
 # TODO: Before doing this, relable column names by year!
 # caaspp_score_data_15_16 <- left_join(caaspp_score_data_15, caaspp_score_data_16, by = c("School Code", "Grade"))
@@ -425,6 +434,64 @@ schl_ext_2019 <- temp_2019 %>%
 
 site_distance_summary_2019 <- site_distance_summary_2019 %>%
   left_join(schl_ext_2019, by='CDSCode')
+
+#finding difference in scores between years
+caaspp_15_16 <- left_join(caaspp_score_data_15, caaspp_score_data_16, by=c("School Code"="School Code", "Grade"="Grade", "Test Id"= "Test Id"))
+
+
+caaspp_15_pw <- caaspp_score_data_15 %>% select(`School Code`,`Mean Scale Score`, `Test Id`, `Grade`) %>%
+  filter(`Mean Scale Score` != "*") %>%
+group_by(`School Code`, `Test Id`, `Grade`) %>%
+summarize(caaspp=mean(as.numeric(`Mean Scale Score`), na.rm = TRUE))
+
+caaspp_16_pw <- caaspp_score_data_16 %>% select(`School Code`,`Mean Scale Score`, `Test Id`, `Grade`) %>%
+  filter(`Mean Scale Score` != "*") %>%
+  group_by(`School Code`, `Test Id`, `Grade`) %>%
+  summarize(caaspp=mean(as.numeric(`Mean Scale Score`), na.rm = TRUE))
+
+caaspp_17_pw <- caaspp_score_data_17 %>% select(`School Code`,`Mean Scale Score`, `Test Id`, `Grade`) %>%
+  filter(`Mean Scale Score` != "*") %>%
+  group_by(`School Code`, `Test Id`, `Grade`) %>%
+  summarize(caaspp=mean(as.numeric(`Mean Scale Score`), na.rm = TRUE))
+
+caaspp_18_pw <- caaspp_score_data_18 %>% select(`School Code`,`Mean Scale Score`, `Test Id`, `Grade`) %>%
+  filter(`Mean Scale Score` != "*") %>%
+  group_by(`School Code`, `Test Id`, `Grade`) %>%
+  summarize(caaspp=mean(as.numeric(`Mean Scale Score`), na.rm = TRUE))
+
+caaspp_19_pw <- caaspp_score_data_19 %>% select(`School Code`,`Mean Scale Score`, `Test Id`, `Grade`) %>%
+  filter(`Mean Scale Score` != "*") %>%
+  group_by(`School Code`, `Test Id`, `Grade`) %>%
+  summarize(caaspp=mean(as.numeric(`Mean Scale Score`), na.rm = TRUE))
+
+caaspp_combine <- caaspp_15_pw %>%
+  rename(caaspp_15=caaspp) %>%
+  inner_join(caaspp_16_pw, by=c("School Code", "Grade", "Test Id")) %>%
+  rename(caaspp_16=caaspp) %>%
+  inner_join(caaspp_17_pw, by=c("School Code", "Grade", "Test Id")) %>%
+  rename(caaspp_17=caaspp) %>%
+  inner_join(caaspp_18_pw, by=c("School Code", "Grade", "Test Id")) %>%
+  rename(caaspp_18=caaspp) %>%
+  inner_join(caaspp_19_pw, by=c("School Code", "Grade", "Test Id")) %>%
+  rename(caaspp_19=caaspp) 
+
+caaspp_combine_pw <- caaspp_combine %>% pivot_wider(names_from = `Test Id`, 
+                               values_from = c(caaspp_15, caaspp_16, caaspp_17, caaspp_18, caaspp_19)) %>%
+  ungroup() %>%
+  transmute(`School Code` = `School Code`, `Grade` = `Grade`, caaspp1_15_16 = caaspp_16_1-caaspp_15_1,
+            caaspp2_15_16 = caaspp_16_2-caaspp_15_2, caaspp1_16_17 = caaspp_17_1-caaspp_16_1,
+            caaspp2_16_17 = caaspp_17_2-caaspp_16_2, caaspp1_17_18 = caaspp_18_1-caaspp_17_1,
+            caaspp2_17_18 = caaspp_18_2-caaspp_17_2, caaspp1_18_19 = caaspp_19_1-caaspp_18_1,
+            caaspp2_18_19 = caaspp_19_2-caaspp_18_2)
+
+combine_filter$CDSCode <- substr(combine_filter$CDSCode, 8, 14)
+
+final_school <- left_join(combine_filter, caaspp_combine_pw, by = c("CDSCode" = "School Code"))
+
+
+
+
+
 
 # Loop through pub_school_data and perform the following actions for each row:
 #     Loop through fire_incident_data
