@@ -435,6 +435,64 @@ schl_ext_2019 <- temp_2019 %>%
 site_distance_summary_2019 <- site_distance_summary_2019 %>%
   left_join(schl_ext_2019, by='CDSCode')
 
+#finding difference in scores between years
+caaspp_15_16 <- left_join(caaspp_score_data_15, caaspp_score_data_16, by=c("School Code"="School Code", "Grade"="Grade", "Test Id"= "Test Id"))
+
+
+caaspp_15_pw <- caaspp_score_data_15 %>% select(`School Code`,`Mean Scale Score`, `Test Id`, `Grade`) %>%
+  filter(`Mean Scale Score` != "*") %>%
+group_by(`School Code`, `Test Id`, `Grade`) %>%
+summarize(caaspp=mean(as.numeric(`Mean Scale Score`), na.rm = TRUE))
+
+caaspp_16_pw <- caaspp_score_data_16 %>% select(`School Code`,`Mean Scale Score`, `Test Id`, `Grade`) %>%
+  filter(`Mean Scale Score` != "*") %>%
+  group_by(`School Code`, `Test Id`, `Grade`) %>%
+  summarize(caaspp=mean(as.numeric(`Mean Scale Score`), na.rm = TRUE))
+
+caaspp_17_pw <- caaspp_score_data_17 %>% select(`School Code`,`Mean Scale Score`, `Test Id`, `Grade`) %>%
+  filter(`Mean Scale Score` != "*") %>%
+  group_by(`School Code`, `Test Id`, `Grade`) %>%
+  summarize(caaspp=mean(as.numeric(`Mean Scale Score`), na.rm = TRUE))
+
+caaspp_18_pw <- caaspp_score_data_18 %>% select(`School Code`,`Mean Scale Score`, `Test Id`, `Grade`) %>%
+  filter(`Mean Scale Score` != "*") %>%
+  group_by(`School Code`, `Test Id`, `Grade`) %>%
+  summarize(caaspp=mean(as.numeric(`Mean Scale Score`), na.rm = TRUE))
+
+caaspp_19_pw <- caaspp_score_data_19 %>% select(`School Code`,`Mean Scale Score`, `Test Id`, `Grade`) %>%
+  filter(`Mean Scale Score` != "*") %>%
+  group_by(`School Code`, `Test Id`, `Grade`) %>%
+  summarize(caaspp=mean(as.numeric(`Mean Scale Score`), na.rm = TRUE))
+
+caaspp_combine <- caaspp_15_pw %>%
+  rename(caaspp_15=caaspp) %>%
+  inner_join(caaspp_16_pw, by=c("School Code", "Grade", "Test Id")) %>%
+  rename(caaspp_16=caaspp) %>%
+  inner_join(caaspp_17_pw, by=c("School Code", "Grade", "Test Id")) %>%
+  rename(caaspp_17=caaspp) %>%
+  inner_join(caaspp_18_pw, by=c("School Code", "Grade", "Test Id")) %>%
+  rename(caaspp_18=caaspp) %>%
+  inner_join(caaspp_19_pw, by=c("School Code", "Grade", "Test Id")) %>%
+  rename(caaspp_19=caaspp) 
+
+caaspp_combine_pw <- caaspp_combine %>% pivot_wider(names_from = `Test Id`, 
+                               values_from = c(caaspp_15, caaspp_16, caaspp_17, caaspp_18, caaspp_19)) %>%
+  ungroup() %>%
+  transmute(`School Code` = `School Code`, `Grade` = `Grade`, caaspp1_15_16 = caaspp_16_1-caaspp_15_1,
+            caaspp2_15_16 = caaspp_16_2-caaspp_15_2, caaspp1_16_17 = caaspp_17_1-caaspp_16_1,
+            caaspp2_16_17 = caaspp_17_2-caaspp_16_2, caaspp1_17_18 = caaspp_18_1-caaspp_17_1,
+            caaspp2_17_18 = caaspp_18_2-caaspp_17_2, caaspp1_18_19 = caaspp_19_1-caaspp_18_1,
+            caaspp2_18_19 = caaspp_19_2-caaspp_18_2)
+
+combine_filter$CDSCode <- substr(combine_filter$CDSCode, 8, 14)
+
+final_school <- left_join(combine_filter, caaspp_combine_pw, by = c("CDSCode" = "School Code"))
+
+
+
+
+
+
 # Loop through pub_school_data and perform the following actions for each row:
 #     Loop through fire_incident_data
 #         distance = sqrt((school_lat - fire_incident_lat)^2 + (school_lon - fire_incident_lon)^2)
