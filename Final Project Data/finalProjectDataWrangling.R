@@ -11,7 +11,7 @@ library(rvest)
 
 
 # Set your working directory
-setwd("/Users/fionahall-zazueta/Documents/GitHub/educ143-final-project/Final Project Data")
+  setwd("/Users/michaelaelias/Documents/GitHub/educ143-final-project/Final Project Data/educ143-final-project/Final Project Data/")
 
 pub_school_data <- read_tsv("pubschls.txt")
 pub_school_data <- pub_school_data %>%
@@ -224,33 +224,16 @@ aq_pm25_2019_year <- aq_pm25_2019_year %>%
   group_by(site_name) %>%
   slice(which.max(days_above_nat_std_2019))
 
-# TODO: Before doing this, relable column names by year!
-# caaspp_score_data_15_16 <- left_join(caaspp_score_data_15, caaspp_score_data_16, by = c("School Code", "Grade"))
-# caaspp_score_data_15_16_17 <- left_join(caaspp_score_data_15_16, caaspp_score_data_17, by = c("School Code", "Grade"))
-# caaspp_score_data_15_16_17_18 <- left_join(caaspp_score_data_15_16_17, caaspp_score_data_18, by = c("School Code", "Grade"))
-# caaspp_score_data_all <- left_join(caaspp_score_data_15_16_17_18, caaspp_score_data_19, by = c("School Code", "Grade"))
+seda_data <- read_csv("SEDA_cov_school_pool_v30.csv")
+seda_data_CA <- seda_data %>% filter(stateabb=="CA")
+combine <- left_join(pub_school_data, seda_data_CA, by=c("School" = "schnam"))
 
 
-# PLAN FOR COMBINING DATA:
+seda_data_CA$ncessch <- substr(seda_data_CA$ncessch, 8, 12)
+combine <- left_join(pub_school_data, seda_data_CA, by=c("NCESSchool" = "ncessch"))
+combine_filter <- combine %>% filter(NCESSchool != "No Data" )
 
-# Loop through pub_school_data and perform the following actions for each row:
-#      current_distance = MAX_INT
-#      smallest_distance = MAX_INT
-#      closest_collection_site_XXXX = ""
-#      Loop through aq_XXXX_collection_sites and perform the following calculation for each row:
-#           current_distance = sqrt((school_lat - collection_site_lat)^2 + (school_lon - collection_site_lon)^2)
-#           if (current_distance < smallest_distance) 
-#               smallest_distance = current_distance 
-#               closest_collection_site = collection_site_name
-#      add closest_collection_site_XXXX variable to current row in pub_school_data 
-#      repeat for all years from 2014 to 2019
-# 
-#   For (i in sequence(nrow(collection_sites_XXX)))
-#      pub_school_data$[collection_site_id_XXXX_string] <-
-#            sqrt((pub_school_data[, lat] - collection_sites_XXXX[i, ])^2 + (pub_school_data[, lon] - collection_sites_XXXX[i,lon])^2)
-#
-#   
-
+# Combine Air Quality Data with School Codes
 aq_site_data_2014 <- inner_join(aq_pm25_2014_year, aq_pm25_sites_2014, by=c("site_name"))
 aq_site_data_2015 <- inner_join(aq_pm25_2015_year, aq_pm25_sites_2015, by=c("site_name"))
 aq_site_data_2016 <- inner_join(aq_pm25_2016_year, aq_pm25_sites_2016, by=c("site_name"))
@@ -405,17 +388,7 @@ schl_ext_2018 <- temp_2018 %>%
 site_distance_summary_2018 <- site_distance_summary_2018 %>%
   left_join(schl_ext_2018, by='CDSCode')
 
-# Loop through pub_school_data and perform the following actions for each row:
-#     Loop through fire_incident_data
-#         distance = sqrt((school_lat - fire_incident_lat)^2 + (school_lon - fire_incident_lon)^2)
-#         significant = sig_calc(fire_size, distance) //TODO: Define sig_calc, should return binary
-#         if (significant) 
-#              ??? IDEAS: ???
-#                  add a significant_fires_XXXX variables to pub_school_data, and raise its count for the current school
-#                  add variables for signficatnt_fires_month_XXXX, and raise its count according to the incident's date
-#                  !!! add a variable for each fire to each observation, and weight the variable by distance from the current observation - Klint's suggestion
-
-
+# Combine Fire Incident Data with Public School Codes
 fire_size_and_latlngs_2014 <- fire_incidents_2014 %>%
   select(incident_name, incident_latitude, incident_longitude, incident_acres_burned)
 
@@ -534,7 +507,58 @@ fire_significance_summary_2018 <- fire_significance_summary_2018 %>%
 # SEDA dataset has "covariant" file at school-level.  Match with pub_school_data
 # has racial composition, % free and reduced lunch, etc
 
+#finding difference in scores between years
+caaspp_15_16 <- left_join(caaspp_score_data_15, caaspp_score_data_16, by=c("School Code"="School Code", "Grade"="Grade", "Test Id"= "Test Id"))
 
+
+caaspp_15_pw <- caaspp_score_data_15 %>% select(`School Code`,`Mean Scale Score`, `Test Id`, `Grade`) %>%
+  filter(`Mean Scale Score` != "*") %>%
+group_by(`School Code`, `Test Id`, `Grade`) %>%
+summarize(caaspp=mean(as.numeric(`Mean Scale Score`), na.rm = TRUE))
+
+caaspp_16_pw <- caaspp_score_data_16 %>% select(`School Code`,`Mean Scale Score`, `Test Id`, `Grade`) %>%
+  filter(`Mean Scale Score` != "*") %>%
+  group_by(`School Code`, `Test Id`, `Grade`) %>%
+  summarize(caaspp=mean(as.numeric(`Mean Scale Score`), na.rm = TRUE))
+
+caaspp_17_pw <- caaspp_score_data_17 %>% select(`School Code`,`Mean Scale Score`, `Test Id`, `Grade`) %>%
+  filter(`Mean Scale Score` != "*") %>%
+  group_by(`School Code`, `Test Id`, `Grade`) %>%
+  summarize(caaspp=mean(as.numeric(`Mean Scale Score`), na.rm = TRUE))
+
+caaspp_18_pw <- caaspp_score_data_18 %>% select(`School Code`,`Mean Scale Score`, `Test Id`, `Grade`) %>%
+  filter(`Mean Scale Score` != "*") %>%
+  group_by(`School Code`, `Test Id`, `Grade`) %>%
+  summarize(caaspp=mean(as.numeric(`Mean Scale Score`), na.rm = TRUE))
+
+caaspp_19_pw <- caaspp_score_data_19 %>% select(`School Code`,`Mean Scale Score`, `Test Id`, `Grade`) %>%
+  filter(`Mean Scale Score` != "*") %>%
+  group_by(`School Code`, `Test Id`, `Grade`) %>%
+  summarize(caaspp=mean(as.numeric(`Mean Scale Score`), na.rm = TRUE))
+
+caaspp_combine <- caaspp_15_pw %>%
+  rename(caaspp_15=caaspp) %>%
+  inner_join(caaspp_16_pw, by=c("School Code", "Grade", "Test Id")) %>%
+  rename(caaspp_16=caaspp) %>%
+  inner_join(caaspp_17_pw, by=c("School Code", "Grade", "Test Id")) %>%
+  rename(caaspp_17=caaspp) %>%
+  inner_join(caaspp_18_pw, by=c("School Code", "Grade", "Test Id")) %>%
+  rename(caaspp_18=caaspp) %>%
+  inner_join(caaspp_19_pw, by=c("School Code", "Grade", "Test Id")) %>%
+  rename(caaspp_19=caaspp) 
+
+caaspp_combine_pw <- caaspp_combine %>% pivot_wider(names_from = `Test Id`, 
+                               values_from = c(caaspp_15, caaspp_16, caaspp_17, caaspp_18, caaspp_19)) %>%
+  ungroup() %>%
+  transmute(`School Code` = `School Code`, `Grade` = `Grade`, caaspp1_15_16 = caaspp_16_1-caaspp_15_1,
+            caaspp2_15_16 = caaspp_16_2-caaspp_15_2, caaspp1_16_17 = caaspp_17_1-caaspp_16_1,
+            caaspp2_16_17 = caaspp_17_2-caaspp_16_2, caaspp1_17_18 = caaspp_18_1-caaspp_17_1,
+            caaspp2_17_18 = caaspp_18_2-caaspp_17_2, caaspp1_18_19 = caaspp_19_1-caaspp_18_1,
+            caaspp2_18_19 = caaspp_19_2-caaspp_18_2)
+
+combine_filter$CDSCode <- substr(combine_filter$CDSCode, 8, 14)
+
+final_school <- left_join(combine_filter, caaspp_combine_pw, by = c("CDSCode" = "School Code"))
 
 # TODO: Redoing Fire Stuff -- Get rid of stuff that mentions 1969 or similar
 # Group by year.  
@@ -560,15 +584,15 @@ fire_data_2017 <- fire_significance_summary_2017 %>%
 fire_data_2018 <- fire_significance_summary_2018 %>%
   select(CDSCode, weighted_fires_sum_2018)
 
-pub_school_and_fire_data <- left_join(pub_school_data, fire_data_2014, by=c("CDSCode"))
+final_school_and_fire_data <- left_join(final_school, fire_data_2014, by=c("CDSCode"))
 
-pub_school_and_fire_data <- left_join(pub_school_and_fire_data, fire_data_2015, by=c("CDSCode"))
+final_school_and_fire_data <- left_join(final_school_and_fire_data, fire_data_2015, by=c("CDSCode"))
 
-pub_school_and_fire_data <- left_join(pub_school_and_fire_data, fire_data_2016, by=c("CDSCode"))
+final_school_and_fire_data <- left_join(final_school_and_fire_data, fire_data_2016, by=c("CDSCode"))
 
-pub_school_and_fire_data <- left_join(pub_school_and_fire_data, fire_data_2017, by=c("CDSCode"))
+final_school_and_fire_data <- left_join(final_school_and_fire_data, fire_data_2017, by=c("CDSCode"))
 
-pub_school_and_fire_data <- left_join(pub_school_and_fire_data, fire_data_2018, by=c("CDSCode"))
+final_school_and_fire_data <- left_join(final_school_and_fire_data, fire_data_2018, by=c("CDSCode"))
 
 
 aq_site_2014 <- site_distance_summary_2014 %>%
@@ -586,11 +610,11 @@ aq_site_2017 <- site_distance_summary_2017 %>%
 aq_site_2018 <- site_distance_summary_2018 %>%
   select(CDSCode, site_name_2018, site_distance_2018)
 
-pub_school_fire_and_site_data <- left_join(pub_school_and_fire_data, aq_site_2014, by=c("CDSCode"))
-pub_school_fire_and_site_data <- left_join(pub_school_fire_and_site_data, aq_site_2015, by=c("CDSCode"))
-pub_school_fire_and_site_data <- left_join(pub_school_fire_and_site_data, aq_site_2016, by=c("CDSCode"))
-pub_school_fire_and_site_data <- left_join(pub_school_fire_and_site_data, aq_site_2017, by=c("CDSCode"))
-pub_school_fire_and_site_data <- left_join(pub_school_fire_and_site_data, aq_site_2018, by=c("CDSCode"))
+final_school_fire_and_site_data <- left_join(final_school_and_fire_data, aq_site_2014, by=c("CDSCode"))
+final_school_fire_and_site_data <- left_join(final_school_fire_and_site_data, aq_site_2015, by=c("CDSCode"))
+final_school_fire_and_site_data <- left_join(final_school_fire_and_site_data, aq_site_2016, by=c("CDSCode"))
+final_school_fire_and_site_data <- left_join(final_school_fire_and_site_data, aq_site_2017, by=c("CDSCode"))
+final_school_fire_and_site_data <- left_join(final_school_fire_and_site_data, aq_site_2018, by=c("CDSCode"))
 
 aq_data_2014 <- aq_site_data_2014 %>%
   select(site_name, days_above_nat_std_2014, day_max_2014)
@@ -607,13 +631,13 @@ aq_data_2017 <- aq_site_data_2017 %>%
 aq_data_2018 <- aq_site_data_2018 %>%
   select(site_name, days_above_nat_std_2018, day_max_2018)
 
-pub_school_and_environment_data <- left_join(pub_school_fire_and_site_data, aq_data_2014, by=c("site_name_2014" = "site_name"))
-pub_school_and_environment_data <- left_join(pub_school_and_environment_data, aq_data_2015, by=c("site_name_2015" = "site_name"))
-pub_school_and_environment_data <- left_join(pub_school_and_environment_data, aq_data_2016, by=c("site_name_2016" = "site_name"))
-pub_school_and_environment_data <- left_join(pub_school_and_environment_data, aq_data_2017, by=c("site_name_2017" = "site_name"))
-pub_school_and_environment_data <- left_join(pub_school_and_environment_data, aq_data_2018, by=c("site_name_2018" = "site_name"))
+final_school_and_environment_data <- left_join(final_school_fire_and_site_data, aq_data_2014, by=c("site_name_2014" = "site_name"))
+final_school_and_environment_data <- left_join(final_school_and_environment_data, aq_data_2015, by=c("site_name_2015" = "site_name"))
+final_school_and_environment_data <- left_join(final_school_and_environment_data, aq_data_2016, by=c("site_name_2016" = "site_name"))
+final_school_and_environment_data <- left_join(final_school_and_environment_data, aq_data_2017, by=c("site_name_2017" = "site_name"))
+final_school_and_environment_data <- left_join(final_school_and_environment_data, aq_data_2018, by=c("site_name_2018" = "site_name"))
 
-pub_school_and_environment_data <- pub_school_and_environment_data %>%
+final_school_and_environment_data <- final_school_and_environment_data %>%
   mutate(days_above_nat_std_2014 = as.numeric(days_above_nat_std_2014)) %>%
   mutate(days_above_nat_std_2015 = as.numeric(days_above_nat_std_2015)) %>%
   mutate(days_above_nat_std_2016 = as.numeric(days_above_nat_std_2016)) %>%
