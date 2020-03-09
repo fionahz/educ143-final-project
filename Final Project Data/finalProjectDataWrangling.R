@@ -11,7 +11,7 @@ library(rvest)
 
 
 # Set your working directory
-  setwd("/Users/michaelaelias/Documents/GitHub/educ143-final-project/Final Project Data/educ143-final-project/Final Project Data/")
+setwd("/Users/fionahall-zazueta/Documents/GitHub/educ143-final-project/Final Project Data/")
 
 pub_school_data <- read_tsv("pubschls.txt")
 pub_school_data <- pub_school_data %>%
@@ -511,54 +511,54 @@ fire_significance_summary_2018 <- fire_significance_summary_2018 %>%
 caaspp_15_16 <- left_join(caaspp_score_data_15, caaspp_score_data_16, by=c("School Code"="School Code", "Grade"="Grade", "Test Id"= "Test Id"))
 
 
-caaspp_15_pw <- caaspp_score_data_15 %>% select(`School Code`,`Mean Scale Score`, `Test Id`, `Grade`) %>%
+caaspp_15_pw <- caaspp_score_data_15 %>% select(`County Code`, `District Code`, `School Code`,`Mean Scale Score`, `Test Id`, `Grade`) %>%
   filter(`Mean Scale Score` != "*") %>%
-group_by(`School Code`, `Test Id`, `Grade`) %>%
+group_by(`County Code`, `District Code`, `School Code`, `Test Id`, `Grade`) %>%
 summarize(caaspp=mean(as.numeric(`Mean Scale Score`), na.rm = TRUE))
 
-caaspp_16_pw <- caaspp_score_data_16 %>% select(`School Code`,`Mean Scale Score`, `Test Id`, `Grade`) %>%
+caaspp_16_pw <- caaspp_score_data_16 %>% select(`County Code`, `District Code`, `School Code`,`Mean Scale Score`, `Test Id`, `Grade`) %>%
   filter(`Mean Scale Score` != "*") %>%
-  group_by(`School Code`, `Test Id`, `Grade`) %>%
+  group_by(`County Code`, `District Code`, `School Code`, `Test Id`, `Grade`) %>%
   summarize(caaspp=mean(as.numeric(`Mean Scale Score`), na.rm = TRUE))
 
-caaspp_17_pw <- caaspp_score_data_17 %>% select(`School Code`,`Mean Scale Score`, `Test Id`, `Grade`) %>%
+caaspp_17_pw <- caaspp_score_data_17 %>% select(`County Code`, `District Code`, `School Code`,`Mean Scale Score`, `Test Id`, `Grade`) %>%
   filter(`Mean Scale Score` != "*") %>%
-  group_by(`School Code`, `Test Id`, `Grade`) %>%
+  group_by(`County Code`, `District Code`, `School Code`, `Test Id`, `Grade`) %>%
   summarize(caaspp=mean(as.numeric(`Mean Scale Score`), na.rm = TRUE))
 
-caaspp_18_pw <- caaspp_score_data_18 %>% select(`School Code`,`Mean Scale Score`, `Test Id`, `Grade`) %>%
+caaspp_18_pw <- caaspp_score_data_18 %>% select(`County Code`, `District Code`, `School Code`,`Mean Scale Score`, `Test Id`, `Grade`) %>%
   filter(`Mean Scale Score` != "*") %>%
-  group_by(`School Code`, `Test Id`, `Grade`) %>%
+  group_by(`County Code`, `District Code`, `School Code`, `Test Id`, `Grade`) %>%
   summarize(caaspp=mean(as.numeric(`Mean Scale Score`), na.rm = TRUE))
 
-caaspp_19_pw <- caaspp_score_data_19 %>% select(`School Code`,`Mean Scale Score`, `Test Id`, `Grade`) %>%
+caaspp_19_pw <- caaspp_score_data_19 %>% select(`County Code`, `District Code`, `School Code`,`Mean Scale Score`, `Test Id`, `Grade`) %>%
   filter(`Mean Scale Score` != "*") %>%
-  group_by(`School Code`, `Test Id`, `Grade`) %>%
+  group_by(`County Code`, `District Code`, `School Code`, `Test Id`, `Grade`) %>%
   summarize(caaspp=mean(as.numeric(`Mean Scale Score`), na.rm = TRUE))
 
 caaspp_combine <- caaspp_15_pw %>%
   rename(caaspp_15=caaspp) %>%
-  inner_join(caaspp_16_pw, by=c("School Code", "Grade", "Test Id")) %>%
+  inner_join(caaspp_16_pw, by=c("County Code", "District Code", "School Code", "Grade", "Test Id")) %>%
   rename(caaspp_16=caaspp) %>%
-  inner_join(caaspp_17_pw, by=c("School Code", "Grade", "Test Id")) %>%
+  inner_join(caaspp_17_pw, by=c("County Code", "District Code", "School Code", "Grade", "Test Id")) %>%
   rename(caaspp_17=caaspp) %>%
-  inner_join(caaspp_18_pw, by=c("School Code", "Grade", "Test Id")) %>%
+  inner_join(caaspp_18_pw, by=c("County Code", "District Code", "School Code", "Grade", "Test Id")) %>%
   rename(caaspp_18=caaspp) %>%
-  inner_join(caaspp_19_pw, by=c("School Code", "Grade", "Test Id")) %>%
+  inner_join(caaspp_19_pw, by=c("County Code", "District Code", "School Code", "Grade", "Test Id")) %>%
   rename(caaspp_19=caaspp) 
 
 caaspp_combine_pw <- caaspp_combine %>% pivot_wider(names_from = `Test Id`, 
                                values_from = c(caaspp_15, caaspp_16, caaspp_17, caaspp_18, caaspp_19)) %>%
   ungroup() %>%
-  transmute(`School Code` = `School Code`, `Grade` = `Grade`, caaspp1_15_16 = caaspp_16_1-caaspp_15_1,
+  transmute(`County Code` = `County Code`, `District Code` = `District Code`, `School Code` = `School Code`, `Grade` = `Grade`, caaspp1_15_16 = caaspp_16_1-caaspp_15_1,
             caaspp2_15_16 = caaspp_16_2-caaspp_15_2, caaspp1_16_17 = caaspp_17_1-caaspp_16_1,
             caaspp2_16_17 = caaspp_17_2-caaspp_16_2, caaspp1_17_18 = caaspp_18_1-caaspp_17_1,
             caaspp2_17_18 = caaspp_18_2-caaspp_17_2, caaspp1_18_19 = caaspp_19_1-caaspp_18_1,
             caaspp2_18_19 = caaspp_19_2-caaspp_18_2)
 
-combine_filter$CDSCode <- substr(combine_filter$CDSCode, 8, 14)
+caaspp_combine_pw <- caaspp_combine_pw %>% unite("CDSCode", 1:3, sep="", remove=FALSE)
 
-final_school <- left_join(combine_filter, caaspp_combine_pw, by = c("CDSCode" = "School Code"))
+final_school <- left_join(combine_filter, caaspp_combine_pw, by = c("CDSCode"))
 
 # TODO: Redoing Fire Stuff -- Get rid of stuff that mentions 1969 or similar
 # Group by year.  
@@ -584,15 +584,11 @@ fire_data_2017 <- fire_significance_summary_2017 %>%
 fire_data_2018 <- fire_significance_summary_2018 %>%
   select(CDSCode, weighted_fires_sum_2018)
 
-final_school_and_fire_data <- left_join(final_school, fire_data_2014, by=c("CDSCode"))
-
-final_school_and_fire_data <- left_join(final_school_and_fire_data, fire_data_2015, by=c("CDSCode"))
-
-final_school_and_fire_data <- left_join(final_school_and_fire_data, fire_data_2016, by=c("CDSCode"))
-
-final_school_and_fire_data <- left_join(final_school_and_fire_data, fire_data_2017, by=c("CDSCode"))
-
-final_school_and_fire_data <- left_join(final_school_and_fire_data, fire_data_2018, by=c("CDSCode"))
+final_school_and_fire_data <- inner_join(final_school, fire_data_2014, by=c("CDSCode"))
+final_school_and_fire_data <- inner_join(final_school_and_fire_data, fire_data_2015, by=c("CDSCode"))
+final_school_and_fire_data <- inner_join(final_school_and_fire_data, fire_data_2016, by=c("CDSCode"))
+final_school_and_fire_data <- inner_join(final_school_and_fire_data, fire_data_2017, by=c("CDSCode"))
+final_school_and_fire_data <- inner_join(final_school_and_fire_data, fire_data_2018, by=c("CDSCode"))
 
 
 aq_site_2014 <- site_distance_summary_2014 %>%
@@ -649,4 +645,15 @@ final_school_and_environment_data <- final_school_and_environment_data %>%
   mutate(day_max_2017 = as.numeric(day_max_2017)) %>%
   mutate(day_max_2018 = as.numeric(day_max_2018)) 
 
+
+final_school_and_environment_data <- final_school_and_environment_data %>%
+  filter(!is.na(caaspp1_15_16)) %>%
+  filter(!is.na(caaspp1_16_17)) %>%
+  filter(!is.na(caaspp1_17_18)) %>%
+  filter(!is.na(caaspp1_18_19)) %>%
+  filter(!is.na(caaspp2_15_16)) %>%
+  filter(!is.na(caaspp2_16_17)) %>%
+  filter(!is.na(caaspp2_17_18)) %>%
+  filter(!is.na(caaspp2_18_19))
+  
 
