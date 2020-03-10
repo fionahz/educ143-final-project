@@ -724,13 +724,14 @@ final_school_and_environment_data <- final_school_and_environment_data %>%
 #                                       -CDSCode), scale) 
 
 schl_envrnment <- final_school_and_environment_data %>%
-  select(perwht,
-         perind,
-         perasn,
-         perhsp,
-         perblk,
-         perfl,
-         perrl,
+  select(
+         # perwht,
+         # perind,
+         # perasn,
+         # perhsp,
+         # perblk,
+         # perfl,
+         # perrl,
          perfrl,
          perecd,
          gifted_tot,
@@ -753,12 +754,7 @@ schl_envrnment <- final_school_and_environment_data %>%
          days_above_nat_std_2015,
          days_above_nat_std_2016,
          days_above_nat_std_2017,
-         days_above_nat_std_2018,
-         day_max_2014,
-         day_max_2015,
-         day_max_2016,
-         day_max_2017,
-         day_max_2018)
+         days_above_nat_std_2018)
 
 
 schl_envrnment_no_na <- schl_envrnment %>%
@@ -769,9 +765,9 @@ schl_envrnment_no_na <- schl_envrnment %>%
 
 
 set.seed(1234)
-schl_envrnment_clusters <- kmeans(schl_envrnment_z, 5, nstart = 25)
-
-plotcluster(schl_envrnment_z, schl_envrnment_clusters$cluster)
+# schl_envrnment_clusters <- kmeans(schl_envrnment_z, 5, nstart = 25)
+# 
+# plotcluster(schl_envrnment_z, schl_envrnment_clusters$cluster)
 
 
 schl_envrnment_pca <- PCA(schl_envrnment_no_na)
@@ -793,8 +789,7 @@ d1 <- fviz_contrib(schl_envrnment_pca, choice = "var", axes = 1, title = "D1")
 d2 <- fviz_contrib(schl_envrnment_pca, choice = "var", axes = 2, title = "D2")
 d3 <- fviz_contrib(schl_envrnment_pca, choice = "var", axes = 3, title = "D3")
 d4 <- fviz_contrib(schl_envrnment_pca, choice = "var", axes = 4, title = "D4")
-d5 <- fviz_contrib(schl_envrnment_pca, choice = "var", axes = 5, title = "D5")
 
-grid.arrange(d1, d2, d3, d4, d5, nrow = 2,  
+grid.arrange(d1, d2, d3, d4, nrow = 2,  
              top = ("Contributions by dimension"))
  
