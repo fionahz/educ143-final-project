@@ -7,7 +7,6 @@ library(cluster)
 library(dendextend)
 library(fpc)
 library(RCA)
-library(rvest)
 
 
 # Set your working directory
@@ -656,4 +655,146 @@ final_school_and_environment_data <- final_school_and_environment_data %>%
   filter(!is.na(caaspp2_17_18)) %>%
   filter(!is.na(caaspp2_18_19))
   
+# schl_envrnment_z <- mutate_all(select(final_school_and_environment_data, 
+#                                       -site_name_2018,
+#                                       -site_name_2017,
+#                                       -site_name_2016,
+#                                       -site_name_2015,
+#                                       -site_name_2014,
+#                                       -`County Code`,
+#                                       -`District Code`,
+#                                       -`School Code`,
+#                                       -sch_sped, 
+#                                       -urbanicity, 
+#                                       -level, 
+#                                       -type, 
+#                                       -stateabb,
+#                                       -schcity,
+#                                       -schnam,
+#                                       -LastUpDate,
+#                                       -AdmEmail3,
+#                                       -AdmLName3,
+#                                       -AdmFName3,
+#                                       -AdmEmail2,
+#                                       -AdmLName2,
+#                                       -AdmFName2,
+#                                       -AdmEmail1,
+#                                       -AdmLName1,
+#                                       -AdmFName1,
+#                                       -Latitude,
+#                                       -Longitude,
+#                                       -FederalDFCDistrictID,
+#                                       -YearRoundYN,
+#                                       -Magnet,
+#                                       -Virtual,
+#                                       -GSserved,
+#                                       -GSoffered,
+#                                       -EILName,
+#                                       -EILCode,
+#                                       -EdOpsName,
+#                                       -EdOpsCode,
+#                                       -SOCType,
+#                                       -SOC,
+#                                       -DOCType,
+#                                       -DOC,
+#                                       -FundingType,
+#                                       -CharterNum,
+#                                       -Charter,
+#                                       -ClosedDate,
+#                                       -OpenDate,
+#                                       -WebSite,
+#                                       -Ext,
+#                                       -Phone,
+#                                       -MailState,
+#                                       -MailZip,
+#                                       -MailCity,
+#                                       -MailStrAbr,
+#                                       -MailStreet,
+#                                       -State,
+#                                       -Zip,
+#                                       -City,
+#                                       -StreetAbr,
+#                                       -Street,
+#                                       -School,
+#                                       -District,
+#                                       -County,
+#                                       -StatusType,
+#                                       -NCESSchool,
+#                                       -NCESDist,
+#                                       -CDSCode), scale) 
 
+schl_envrnment <- final_school_and_environment_data %>%
+  select(perwht,
+         perind,
+         perasn,
+         perhsp,
+         perblk,
+         perfl,
+         perrl,
+         perfrl,
+         perecd,
+         gifted_tot,
+         disab_tot,
+         lep,
+         # caaspp1_15_16,
+         # caaspp1_16_17,
+         # caaspp1_17_18,
+         # caaspp1_18_19,
+         # caaspp2_15_16,
+         # caaspp2_16_17,
+         # caaspp2_17_18,
+         # caaspp2_18_19,
+         weighted_fires_sum_2014,
+         weighted_fires_sum_2015,
+         weighted_fires_sum_2016,
+         weighted_fires_sum_2017,
+         weighted_fires_sum_2018,
+         days_above_nat_std_2014,
+         days_above_nat_std_2015,
+         days_above_nat_std_2016,
+         days_above_nat_std_2017,
+         days_above_nat_std_2018,
+         day_max_2014,
+         day_max_2015,
+         day_max_2016,
+         day_max_2017,
+         day_max_2018)
+
+
+schl_envrnment_no_na <- schl_envrnment %>%
+  drop_na()
+
+# schl_envrnment_z <- mutate_all(schl_envrnment_no_na, scale)
+
+
+
+set.seed(1234)
+schl_envrnment_clusters <- kmeans(schl_envrnment_z, 5, nstart = 25)
+
+plotcluster(schl_envrnment_z, schl_envrnment_clusters$cluster)
+
+
+schl_envrnment_pca <- PCA(schl_envrnment_no_na)
+
+get_eigenvalue(schl_envrnment_pca)
+
+fviz_eig(schl_envrnment_pca, addlabels = TRUE, ylim = c(0, 40))
+
+var <- get_pca_var(schl_envrnment_pca)
+var
+
+var$coord
+
+fviz_pca_var(schl_envrnment_pca, col.var = "cos2",
+             gradient.cols = c("forestgreen", "orange", "red"))
+
+# There should be 6 of these, but I cannot, for the life of me, figure out how to get 6
+d1 <- fviz_contrib(schl_envrnment_pca, choice = "var", axes = 1, title = "D1")
+d2 <- fviz_contrib(schl_envrnment_pca, choice = "var", axes = 2, title = "D2")
+d3 <- fviz_contrib(schl_envrnment_pca, choice = "var", axes = 3, title = "D3")
+d4 <- fviz_contrib(schl_envrnment_pca, choice = "var", axes = 4, title = "D4")
+d5 <- fviz_contrib(schl_envrnment_pca, choice = "var", axes = 5, title = "D5")
+
+grid.arrange(d1, d2, d3, d4, d5, nrow = 2,  
+             top = ("Contributions by dimension"))
+ 
