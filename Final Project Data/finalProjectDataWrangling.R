@@ -16,10 +16,12 @@ library(randomForest)
 library(e1071)
 install.packages("glmnet")
 library(glmnet)
+library(broom)
+library(caret)
 
 
 # Set your working directory
-setwd("/Users/fionahall-zazueta/Documents/GitHub/educ143-final-project/Final Project Data/")
+setwd("/Users/michelleleung/Documents/GitHub/educ143-final-project/Final Project Data/")
 
 pub_school_data <- read_tsv("pubschls.txt")
 pub_school_data <- pub_school_data %>%
@@ -820,7 +822,9 @@ d4 <- fviz_contrib(schl_envrnment_pca, choice = "var", axes = 4, title = "D4")
 grid.arrange(d1, d2, d3, d4, nrow = 2,  
              top = ("Contributions by dimension"))
 
-#regression 15-16
+
+######################## regression 15-16 ########################
+
 set.seed(1234)  
 train <- sample_frac(schl_envrnment_no_na, 0.8)
 test <- filter(schl_envrnment_no_na, !schl_envrnment_no_na$CDSCode %in% 
@@ -842,6 +846,7 @@ mod_glm_15_16 <- glm(caaspp1_15_16 ~
                days_above_nat_std_2015, 
                data = train)
 
+
 results_15_16 <- summary(mod_glm_15_16)
 coefficients_15_16 <- as_tibble(results_15_16$coefficients, rownames = "Variable")
 arrange(coefficients_15_16, desc(Estimate)) 
@@ -853,6 +858,7 @@ mod_glm_coefs_15_16 <- coef(mod_glm_15_16) %>%
   filter(names != "(Intercept)") %>%
   top_n(25, wt = x)
 
+?tidy
 
 ggplot(mod_glm_coefs_15_16, aes(x, reorder(names, x))) +
   geom_point() +
@@ -861,8 +867,7 @@ ggplot(mod_glm_coefs_15_16, aes(x, reorder(names, x))) +
        y = "") +
   theme_bw()
 
-#reguralization_15_16
-
+######################## regularization_15_16 #########################
 train_x_15_16 <- model.matrix(caaspp1_15_16 ~
                             perind +
                               perasn +
@@ -883,17 +888,18 @@ train_y_15_16 <- train %>%
   mutate(caaspp1_15_16 = as.numeric(caaspp1_15_16)) %>%
   as.matrix()
 
+#~~~~~RIDGE regression:
 mod_ridge_15_16 <- glmnet(x = train_x_15_16,
                     y = train_y_15_16,
                     alpha = 0)
-
-
 plot(mod_ridge_15_16)
+#L1 Norm is the weight given to the shrinkage
 
+# To decide what lamba to choose, we use cross-validation: put cv. in front of
+# glmnet. The default is 10 folds. 
 mod_ridge_15_16 <- cv.glmnet(x = train_x_15_16,
                        y = train_y_15_16,
                        alpha = 0)
-
 plot(mod_ridge_15_16)
 
 mod_ridge_coefs_15_16 <- coef(mod_ridge_15_16, s = "lambda.1se") %>%
@@ -909,7 +915,106 @@ ggplot(mod_ridge_coefs_15_16, aes(value, reorder(row, value))) +
        y = "") +
   theme_bw()
 
-#regression 16-17
+#compare with the regular regression:
+mod_glm_15_16_coefs <- coef(mod_glm_15_16) %>%
+  tidy() %>%
+  filter(names != "(Intercept)") %>%
+  top_n(25, wt = x)
+
+ggplot(mod_glm_15_16_coefs, aes(x, reorder(names, x))) +
+  geom_point() +
+  labs(title = "Top 25 largest coefficients logistic regression",
+       x = "Coefficient",
+       y = "") +
+  theme_bw()
+
+
+#~~~~~LASSO regression:
+mod_lasso_15_16 <- glmnet(x = train_x_15_16,
+                    y = train_y_15_16,
+                    alpha = 1) #lasso is set alpha to 1, not 0
+#lasso will shrink coefficients to 0
+#if low lambda, many coefficients will be kicked out
+
+plot(mod_lasso_15_16)
+
+# Again a plot for the coefficients at the preferred lamba
+mod_lasso_15_16 <- cv.glmnet(x = train_x_15_16,
+                       y = train_y_15_16,
+                       alpha = 1)
+
+coef_mod_lasso_15_16 <- coef(mod_lasso_15_16, s = "lambda.1se") %>%
+  tidy() %>%
+  filter(row != "(Intercept)") %>%
+  top_n(25, wt = abs(value))
+
+ggplot(coef_mod_lasso_15_16, aes(value, reorder(row, value))) +
+  geom_point() +
+  ggtitle("Top 25 largest coefficients lasso regression") +
+  xlab("Coefficient") +
+  ylab("") +
+  theme_bw()
+
+
+#~~~~~ELASTIC NET. We can start with half ridge half lasso by
+# stating alpha is 0.5 (0.1 would be more ridge than lasso, 0.9 would be more 
+# lasso than ridge..etc)
+mod_enet_15_16 <- cv.glmnet(x = train_x_15_16,
+                            y = train_y_15_16,
+                      alpha = 0.5)
+
+
+# Cross validation can be used to determine how much ridge and how much lasso
+# is best (alpha) and how much shrinkage would be best (lamba).For this we 
+# will use the train() function from the caret package.
+mod_enet_15_16 <- train(caaspp1_15_16 ~ 
+                        perind +
+                          perasn +
+                          perhsp +
+                          perblk +
+                          perfrl +
+                          perecd +
+                          gifted_tot +
+                          disab_tot +
+                          lep + 
+                          weighted_fires_sum_2015 +
+                          days_above_nat_std_2015 +
+                          day_site_15 +
+                          days_above_nat_std_2015, 
+                  data = schl_envrnment_no_na,
+                  method = "glmnet",
+                  trControl = trainControl(method = "cv", number = 10),
+                  tuneLength = 10)
+
+# The print() function will show you what value of alpha and lamba was settled
+# on. It also gives you an accuracy value. The Kappa value is also an index of 
+# accuracy, except that it is normalized at the baseline of random chance on 
+# your dataset. It is best to use Kappa with imbalance in the classes
+# (e.g. 70-30 split for classes 0 and 1 and you can achieve 70% accuracy by 
+# predicting all instances are for class 0).
+print(mod_enet_15_16)
+
+# Running base R's plot() function on the object will return this visualization.
+# It shows you the accuracy rates with variable mixings of ridge and lasso.
+plot(mod_enet_15_16)
+
+
+# Let's look at the final results! Getting the coefficients is a bit tricky
+# as we need to dig in the final model and get the optimal lambda
+coef_mod_enet_15_16 <- coef(mod_enet_15_16$finalModel, mod_enet_15_16$bestTune$lambda) %>%
+  tidy() %>%
+  filter(row != "(Intercept)") %>%
+  top_n(25, wt = abs(value))
+
+ggplot(coef_mod_enet_15_16, aes(value, reorder(row, value))) +
+  geom_point() +
+  labs(title = "Top 25 largest coefficients elastic net regression",
+       x = "Coefficient",
+       y = "") +
+  theme_bw()
+
+
+######################## regression 16-17 ########################
 
 mod_glm_16_17 <- glm(caaspp1_16_17 ~ 
                        perind +
@@ -933,7 +1038,7 @@ arrange(coefficients_16_17, desc(Estimate))
 
 dwplot(mod_glm_16_17)
 
-#regression 17-18
+######################## regression 17-18 ########################
 
 mod_glm_17_18 <- glm(caaspp1_17_18 ~ 
                        perind +
@@ -989,7 +1094,7 @@ dwplot(mod_glm_17_18)
 #   facet_wrap(~predictors, scales = "free_y")
 # 
 
-#regression 18-19
+######################## regression 18-19 ########################
 mod_glm_18_19 <- glm(caaspp1_18_19 ~ 
                        perind +
                        perasn +
