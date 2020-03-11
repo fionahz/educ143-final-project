@@ -798,16 +798,28 @@ set.seed(1234)
 # 
 # plotcluster(schl_envrnment_z, schl_envrnment_clusters$cluster)
 
-
-schl_envrnment_pca <- PCA(schl_envrnment_no_na)
+schl_envrnment_noCDSCode <- select(schl_envrnment_no_na, -CDSCode)
+names(schl_envrnment_noCDSCode)
+schl_envrnment_pca <- PCA(schl_envrnment_noCDSCode)
 
 get_eigenvalue(schl_envrnment_pca)
 
-fviz_eig(schl_envrnment_pca, addlabels = TRUE, ylim = c(0, 40))
+# schl_envrnment_pca_0 <- PCA(schl_envrnment_no_na)
+# get_eigenvalue(schl_envrnment_pca_0)
+# fviz_eig(schl_envrnment_pca_0, addlabels = TRUE, ylim = c(0, 40))
+
+roc_schl_15_16 <- ggplot(prob, aes(d = Observed, m = Probability, color = Model)) + 
+  geom_roc(labels = FALSE) + #takes Observed, Probability, figures out y/x axes
+  labs(title = "ROC curves",
+       y = "Prop. true positives",
+       x = "Prop. false positives") +
+  theme_bw() +
+  facet_grid(Sample ~ .)
+roc_schl_15_16
+
 
 var <- get_pca_var(schl_envrnment_pca)
 var
-
 var$coord
 
 fviz_pca_var(schl_envrnment_pca, col.var = "cos2",
