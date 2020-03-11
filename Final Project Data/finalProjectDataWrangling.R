@@ -7,6 +7,15 @@ library(cluster)
 library(dendextend)
 library(fpc)
 library(RCA)
+library(tidyverse)
+library(dotwhisker)
+library(class)
+library(rpart)
+library(rpart.plot)
+library(randomForest)
+library(e1071)
+install.packages("glmnet")
+library(glmnet)
 
 
 # Set your working directory
@@ -723,28 +732,35 @@ final_school_and_environment_data <- final_school_and_environment_data %>%
 #                                       -NCESDist,
 #                                       -CDSCode), scale) 
 
+final_school_and_environment_data <-  final_school_and_environment_data %>% 
+  mutate(day_site_15 = (day_max_2015 / site_distance_2015)) %>% 
+  mutate(day_site_16 = (day_max_2016 / site_distance_2016)) %>% 
+  mutate(day_site_17 = (day_max_2017 / site_distance_2017)) %>% 
+  mutate(day_site_18 = (day_max_2018 / site_distance_2018)) 
+
+
 schl_envrnment <- final_school_and_environment_data %>%
   select(
          # perwht,
-         # perind,
-         # perasn,
-         # perhsp,
-         # perblk,
-         # perfl,
-         # perrl,
+          perind,
+          perasn,
+          perhsp,
+          perblk,
+          perfl,
+          perrl,
          perfrl,
          perecd,
          gifted_tot,
          disab_tot,
          lep,
-         # caaspp1_15_16,
-         # caaspp1_16_17,
-         # caaspp1_17_18,
-         # caaspp1_18_19,
-         # caaspp2_15_16,
-         # caaspp2_16_17,
-         # caaspp2_17_18,
-         # caaspp2_18_19,
+          caaspp1_15_16,
+          caaspp1_16_17,
+          caaspp1_17_18,
+          caaspp1_18_19,
+          caaspp2_15_16,
+          caaspp2_16_17,
+          caaspp2_17_18,
+          caaspp2_18_19,
          weighted_fires_sum_2014,
          weighted_fires_sum_2015,
          weighted_fires_sum_2016,
@@ -754,7 +770,18 @@ schl_envrnment <- final_school_and_environment_data %>%
          days_above_nat_std_2015,
          days_above_nat_std_2016,
          days_above_nat_std_2017,
+         days_above_nat_std_2018, 
+         CDSCode,
+         day_site_15, 
+         day_site_16, 
+         day_site_17, 
+         day_site_18, 
+         days_above_nat_std_2014, 
+         days_above_nat_std_2015, 
+         days_above_nat_std_2016, 
+         days_above_nat_std_2017, 
          days_above_nat_std_2018)
+
 
 
 schl_envrnment_no_na <- schl_envrnment %>%
@@ -792,4 +819,202 @@ d4 <- fviz_contrib(schl_envrnment_pca, choice = "var", axes = 4, title = "D4")
 
 grid.arrange(d1, d2, d3, d4, nrow = 2,  
              top = ("Contributions by dimension"))
- 
+
+#regression 15-16
+set.seed(1234)  
+train <- sample_frac(schl_envrnment_no_na, 0.8)
+test <- filter(schl_envrnment_no_na, !schl_envrnment_no_na$CDSCode %in% 
+                 train$CDSCode)
+
+mod_glm_15_16 <- glm(caaspp1_15_16 ~ 
+               perind +
+               perasn +
+               perhsp +
+               perblk +
+               perfrl +
+               perecd +
+               gifted_tot +
+               disab_tot +
+               lep + 
+               weighted_fires_sum_2015 +
+               days_above_nat_std_2015 +
+               day_site_15 +
+               days_above_nat_std_2015, 
+               data = train)
+
+results_15_16 <- summary(mod_glm_15_16)
+coefficients_15_16 <- as_tibble(results_15_16$coefficients, rownames = "Variable")
+arrange(coefficients_15_16, desc(Estimate)) 
+
+dwplot(mod_glm_15_16)
+
+mod_glm_coefs_15_16 <- coef(mod_glm_15_16) %>%
+  tidy() %>%
+  filter(names != "(Intercept)") %>%
+  top_n(25, wt = x)
+
+
+ggplot(mod_glm_coefs_15_16, aes(x, reorder(names, x))) +
+  geom_point() +
+  labs(title = "Top 25 largest coefficients logistic regression",
+       x = "Coefficient",
+       y = "") +
+  theme_bw()
+
+#reguralization_15_16
+
+train_x_15_16 <- model.matrix(caaspp1_15_16 ~
+                            perind +
+                              perasn +
+                              perhsp +
+                              perblk +
+                              perfrl +
+                              perecd +
+                              gifted_tot +
+                              disab_tot +
+                              lep + 
+                              weighted_fires_sum_2015 +
+                              days_above_nat_std_2015 +
+                              day_site_15 +
+                              days_above_nat_std_2015, 
+                            train)
+train_y_15_16 <- train %>%
+  select(caaspp1_15_16) %>%
+  mutate(caaspp1_15_16 = as.numeric(caaspp1_15_16)) %>%
+  as.matrix()
+
+mod_ridge_15_16 <- glmnet(x = train_x_15_16,
+                    y = train_y_15_16,
+                    alpha = 0)
+
+
+plot(mod_ridge_15_16)
+
+mod_ridge_15_16 <- cv.glmnet(x = train_x_15_16,
+                       y = train_y_15_16,
+                       alpha = 0)
+
+plot(mod_ridge_15_16)
+
+mod_ridge_coefs_15_16 <- coef(mod_ridge_15_16, s = "lambda.1se") %>%
+  tidy() %>%
+  filter(row != "(Intercept)") %>%
+  top_n(25, wt = abs(value)) 
+mod_ridge_coefs_15_16
+
+ggplot(mod_ridge_coefs_15_16, aes(value, reorder(row, value))) +
+  geom_point() +
+  labs(title = "Top 25 largest coefficients ridge regression",
+       x = "Coefficient",
+       y = "") +
+  theme_bw()
+
+#regression 16-17
+
+mod_glm_16_17 <- glm(caaspp1_16_17 ~ 
+                       perind +
+                       perasn +
+                       perhsp +
+                       perblk +
+                       perfrl +
+                       perecd +
+                       gifted_tot +
+                       disab_tot +
+                       lep + 
+                       weighted_fires_sum_2016 +
+                       days_above_nat_std_2016 +
+                       day_site_16 +
+                       days_above_nat_std_2016, 
+                     data = train)
+
+results_16_17 <- summary(mod_glm_16_17)
+coefficients_16_17 <- as_tibble(results_16_17$coefficients, rownames = "Variable")
+arrange(coefficients_16_17, desc(Estimate)) 
+
+dwplot(mod_glm_16_17)
+
+#regression 17-18
+
+mod_glm_17_18 <- glm(caaspp1_17_18 ~ 
+                       perind +
+                       perasn +
+                       perhsp +
+                       perblk +
+                       perfrl +
+                       perecd +
+                       gifted_tot +
+                       disab_tot +
+                       lep + 
+                       weighted_fires_sum_2017 +
+                       days_above_nat_std_2017 +
+                       day_site_17 +
+                       days_above_nat_std_2017, 
+                     data = train)
+
+results_17_18 <- summary(mod_glm_17_18)
+coefficients_17_18 <- as_tibble(results_17_18$coefficients, rownames = "Variable")
+arrange(coefficients_17_18, desc(Estimate))
+
+dwplot(mod_glm_17_18)
+
+# #check for colinearity
+# # continuous_17_18 <- train %>%
+# #  select(perind,
+# #           perasn,
+#  #          perhsp,
+#            perblk,
+#            perfrl,
+#            perecd,
+#            gifted_tot,
+#            disab_tot,
+#            lep, 
+#            weighted_fires_sum_2017,
+#            days_above_nat_std_2017,
+#            day_site_17,
+#            days_above_nat_std_2017) 
+# predictors_17_18 <- colnames(continuous_17_18)
+# 
+# probabilities_17_18 <- predict(mod_glm_17_18, type = "response")
+# 
+# continuous_17_18 <- continuous_17_18 %>%
+#   mutate(logit = log(probabilities_17_18/(1-probabilities_17_18))) %>%
+#   pivot_longer(cols = -logit,
+#                names_to = "predictors", 
+#                values_to = "predictor_value")
+# 
+# ggplot(continuous_17_18, aes(logit, predictor_value))+
+#   geom_point(size = 0.5, alpha = 0.5) +
+#   geom_smooth(method = "loess") + 
+#   theme_bw() + 
+#   facet_wrap(~predictors, scales = "free_y")
+# 
+
+#regression 18-19
+mod_glm_18_19 <- glm(caaspp1_18_19 ~ 
+                       perind +
+                       perasn +
+                       perhsp +
+                       perblk +
+                       perfrl +
+                       perecd +
+                       gifted_tot +
+                       disab_tot +
+                       lep + 
+                       weighted_fires_sum_2018 +
+                       days_above_nat_std_2018 +
+                       day_site_18 +
+                       days_above_nat_std_2018, 
+                     data = train)
+
+results_18_19 <- summary(mod_glm_18_19)
+coefficients_18_19 <- as_tibble(results_18_19$coefficients, rownames = "Variable")
+arrange(coefficients_18_19, desc(Estimate))
+
+dwplot(mod_glm_18_19)
+
+
+#CHECKING for colinearity
+
+
+
+
