@@ -18,6 +18,9 @@ install.packages("glmnet")
 library(glmnet)
 library(broom)
 library(caret)
+install.packages("plotROC")
+library(plotROC)
+
 
 
 # Set your working directory
@@ -837,12 +840,15 @@ grid.arrange(d1, d2, d3, d4, nrow = 2,
 
 ######################## regression 15-16 ########################
 
+schl_envrnment_no_na <- schl_envrnment_no_na %>% mutate(caaspp_15_16_change = case_when(caaspp1_15_16 <= 0 ~ 0,
+                                                                                        caaspp1_15_16 > 0 ~ 1)) 
+
 set.seed(1234)  
 train <- sample_frac(schl_envrnment_no_na, 0.8)
 test <- filter(schl_envrnment_no_na, !schl_envrnment_no_na$CDSCode %in% 
                  train$CDSCode)
 
-mod_glm_15_16 <- glm(caaspp1_15_16 ~ 
+mod_glm_15_16 <- glm(caaspp_15_16_change ~ 
                perind +
                perasn +
                perhsp +
@@ -856,7 +862,8 @@ mod_glm_15_16 <- glm(caaspp1_15_16 ~
                days_above_nat_std_2015 +
                day_site_15 +
                days_above_nat_std_2015, 
-               data = train)
+               data = train,
+               family = binomial)
 
 
 results_15_16 <- summary(mod_glm_15_16)
@@ -878,6 +885,90 @@ ggplot(mod_glm_coefs_15_16, aes(x, reorder(names, x))) +
        x = "Coefficient",
        y = "") +
   theme_bw()
+## random forest 15-16
+mod_rf_15_16 <- randomForest(caaspp_15_16_change ~ 
+                               perind +
+                               perasn +
+                               perhsp +
+                               perblk +
+                               perfrl +
+                               perecd +
+                               gifted_tot +
+                               disab_tot +
+                               lep + 
+                               weighted_fires_sum_2015 +
+                               days_above_nat_std_2015 +
+                               day_site_15 +
+                               days_above_nat_std_2015, 
+                             data = train,
+                             ntree = 150,
+                             mtry = 5)
+
+class(schl_envrnment_no_na$caaspp_15_16_change)
+
+
+schl_envrnment_no_na$caaspp_15_16_change <- as.factor(schl_envrnment_no_na$caaspp_15_16_change)
+
+
+
+##ROC curve for random forest and regression
+prob_glm_15_16_train <- predict(mod_glm_15_16,  type = "response")
+prob_glm_15_16_test <- predict(mod_glm_15_16, newdata = test, type = "response")
+
+prob_rf_15_16_train <- predict(mod_rf_15_16, type = "prob")[,2]
+prob_rf_15_16_test <- predict(mod_rf_15_16, newdata = test, type = "prob")[,2]
+
+prob_train_15_16 <- tibble(
+  Observed = as.numeric(train$caaspp_15_16_change)-1,   
+  Regression = prob_glm_15_16_train,
+  RandomForest = prob_rf_15_16_train) %>%
+  pivot_longer(cols = -Observed, 
+               names_to = "Model",
+               values_to = "Probability") %>%
+  mutate(Sample = "Train")
+
+prob_test_15_16 <- tibble(
+  Observed = as.numeric(test$caaspp_15_16_change)-1,
+  Regression = prob_glm_15_16_test,
+  RandomForest = prob_rf_15_16_test) %>%
+  pivot_longer(cols = -Observed, 
+               names_to = "Model",
+               values_to = "Probability") %>%
+  mutate(Sample = "Test") 
+
+prob_15_16 <- full_join(prob_train_15_16, prob_test_15_16)
+
+roc_15_16 <- ggplot(prob_15_16, aes(d = Observed, m = Probability, color = Model)) + 
+  geom_roc(labels = FALSE) +
+  labs(title = "ROC curves",
+       y = "Prop. true positives",
+       x = "Prop. false positives") +
+  theme_bw() +
+  facet_grid(Sample ~ .)
+roc_15_16 
+
+roc_gm_15_16 <-  ggplot(prob_15_16, aes(d = Observed, m = Probability, color = Sample)) + 
+  geom_roc(labels = FALSE) +
+  labs(title = "ROC curves",
+       y = "Prop. true positives",
+       x = "Prop. false positives") +
+  theme_bw() +
+  facet_wrap(~Model)
+
+auc_15_16 <- tibble(
+  Sample = ifelse(calc_auc(roc_15_16)$PANEL == 1, "Test", "Train"),
+  Model = case_when(calc_auc(roc_15_16)$group == 1 ~ "RandomForest",
+                    calc_auc(roc_15_16)$group == 2 ~ "Regression"),
+  AUC = str_c("AUC = ", as.character(round(calc_auc(roc_15_16)$AUC, 3), sep = "")),
+  x = rep(.7, n = 4),
+  y = rep(c(.70, .60), 2))
+
+roc_15_16 + geom_text(data = auc_15_16, 
+                   mapping = aes(d = NULL,
+                                 m = NULL,
+                                 x = x, 
+                                 y = y, 
+                                 label = AUC))
 
 ######################## regularization_15_16 #########################
 train_x_15_16 <- model.matrix(caaspp1_15_16 ~
